@@ -1,145 +1,53 @@
-An Autonomous AI discord administrative bot.
+# Autonomous Discord AI Bot
 
-The AI will be based on Claude models, in particular "claude-3-5-haiku-20241022" and "claude-3-haiku-20240307"
+An administrative Discord bot powered by Anthropic Claude models with a dual-agent safety layer. AI1 plans and converses naturally while holding full administrative powers; AI2 reviews planned scripts and escalates risky actions for manual Telegram approval.
 
-The AI will have access to everything in the joined server, a list of every channel, every role, every user (id, name, and display name) and every message ever sent (they will be retrieved when asked for them)
+## Features
+- Conversational AI (Claude haiku models) that can understand mixed chit-chat plus embedded administrative requests.
+- Structured AI1 outputs: human reply plus runnable Python action scripts across messaging, channels, roles, webhooks, bans, and external API calls.
+- AI2 reviewer to auto-approve safe scripts or escalate higher-impact actions (webhooks, bans, deletes, external calls) to a Telegram bot with human-in-the-loop controls.
+- Restricted Python executor without filesystem access, using only approved Discord helper functions and explicit built-ins; raw Discord client/guild handles are still exposed to AI1 for advanced flows.
+- Rolling one-hour per-admin memory for dialogue plus a recent action log to support reversibility and context-aware replies.
 
-The AI will have administrative abilities and will be able to execute any kind of code that revolves around the discord ambience, this includes asking for basic stuff es: "@bot create me a nice random role and give it to 3 random persons and Erika"
+## Configuration
+Create a `config.json` file alongside `main.py` using the template below. Secrets are never committed and must be provided at runtime.
 
-If the AI receives vague info or weird request it will ask for clarification in order not to execute random crap
-
-The AI must also be able to talk normally, act normally and have nice conversations. if the user sends a text with inside a request for example: "yeah my grandma is a very nice cook.. ah btw can you create me a role called pizza? i like pizza, reminds me of what my grandma used to cook..." The AI will have the conversation and also execute the request
-
-The AI must be completely free, if asked to DM a user it will, if asked to send a random message in 3 random channels it will, if asked to *send a message 10 times every 5 seconds* it will
-
-The AI is free both in actions and time, if asked to do something that requires time, it will still do so.
-
-To do all of this the AI will write and execute its own code on my machine, the ai must be able to do basic imports necessary for every task, this includes calling safe APIs around the internet if requested or required to.
-
-
-how do we verify that AI will not play bad tricks on my PC and go nuts? we will have another AI (AI1 and AI2). AI2 will monitor every output of AI1, before execution, AI2 will be asked to validate the code of AI1, if it is stupidly dangerous es: (calling weird APIs, Mass destruction of the server or anything like that) AI2 will instantly reject and explain why in short words
-
-all of the information about token, server ID, people to can talk to the bot itself are stored in a JSON file that will be found in the same dir as the program; the file looks like this:
-
+```json
 {
-    "discord_token": "xxxxxxxxxxxxx",
-    "anthropic_key": "xxxxxxxxxxxxx",
-    "telegram_token": "xxxxxxxxxxxxx",
-    "guild_id": 1443908368539451415,
-    "admins": [
-        783029509061476403,
-        1039618113852952577,
-        1361732484093575328,
-        1447673330269163752
-    ]
+  "discord_token": "your-discord-token",
+  "anthropic_key": "your-anthropic-key",
+  "telegram_token": "your-telegram-token",
+  "guild_id": 1443908368539451415,
+  "admins": [
+    783029509061476403,
+    1039618113852952577,
+    1361732484093575328,
+    1447673330269163752
+  ]
 }
+```
 
+You can copy `config.example.json` and fill in your real values.
 
-The AI1 must have a 1H memory for each individual ADMIN, this memory is for discussions, little chats and anything else
-The AI will also remember all of its actions, so in case the action wanted to revered it's pretty easy
+## Running the bot
+Install dependencies and start the bot (Python 3.11+ recommended):
 
-AI1, WILL not be able to read anything on my pc, nor write
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
 
-1. Human-in-the-Loop Final Authority
+The bot will connect to Discord and start the Telegram escalation bridge. When AI2 flags a script as risky or unclear, the Telegram bot sends a summary, risks, and full code snapshot with approval buttons. No flagged script will run without explicit approval.
 
-A new manual confirmation layer has been introduced.
+## How AI1 → AI2 → Human flow works
+1. **AI1 conversation**: AI1 receives the admin message plus one-hour conversational memory and recent actions. It returns JSON with a human-facing reply and optional Python scripts implementing the requested actions—even complex sequences like channel orchestration or webhook/API wiring.
+2. **AI2 review**: AI2 heuristically inspects each script for risky patterns (external calls, timed execution, multi-user impact, bans/kicks/deletes/webhooks, or large size). Safe scripts run immediately; risky ones are escalated.
+3. **Telegram approval**: Escalated scripts are sent to the configured Telegram chat with summary, risks, and a “View Full Code” button. Execution remains frozen until approved.
+4. **Execution sandbox**: Approved scripts run in a constrained executor exposing rich Discord helpers (`send_message`, `send_dm`, `create_role`, `assign_role`, `remove_role`, `create_text_channel`, `create_voice_channel`, `delete_channel`, `set_channel_permissions`, `ban_member`, `kick_member`, `create_webhook`, `send_webhook`, `http_get`, `http_post`, `fetch_history`) plus raw client/guild handles—still with no filesystem access or secret exposure.
 
-If AI2 determines that a script generated by AI1 may be unsafe, ambiguous, irreversible, or potentially abusive, execution is paused immediately and escalated to the project owner via a Telegram bot.
-
-No flagged script can run without explicit human approval.
-
-2. AI2 → Telegram Confirmation Workflow
-
-When escalation is triggered, the Telegram bot sends a structured message containing:
-
-Plain-English Summary
-A clear explanation of what the script does, written for humans (no code interpretation required).
-
-Risk Analysis
-A concise list of objective risks, such as:
-
-mass or repeated actions
-
-timed or scheduled execution
-
-possible rate-limit issues
-
-multi-user or multi-channel impact
-
-external network usage
-
-Exact Script Snapshot
-The full, unmodified Python code generated by AI1, displayed read-only.
-
-If AI2 cannot confidently explain the script’s behavior, the request is automatically escalated.
-
-3. Telegram Decision Controls
-
-The Telegram bot provides fast, explicit controls:
-
-✅ Approve (Run Once)
-
-⛔ Reject
-
-🔁 Approve & Trust This Pattern (optional future whitelist)
-
-📄 View Full Code
-
-If no response is received within a predefined timeout, the request is automatically rejected.
-
-4. Hard Execution Freeze Until Approval
-
-When a script is flagged:
-
-No partial execution is allowed
-
-No background tasks or delayed actions may start
-
-No state changes occur
-
-Execution resumes only after an explicit approval signal from Telegram.
-
-5. Python Execution Model (Updated)
-
-AI1 is allowed to generate Python directly for expressiveness and complex reasoning.
-
-However:
-
-AI1 still has no filesystem access
-
-AI1 cannot read or write local files
-
-Secrets (tokens, keys, IDs) are never exposed to the model
-
-Execution occurs only inside the controlled executor environment
-
-AI2 acts as a reviewer, but final authority belongs to the human operator.
-
-6. AI2 Is Advisory, Not Absolute
-
-AI2 does not silently block behavior.
-
-Instead:
-
-Clear or safe scripts pass automatically
-
-Risky or unclear scripts are escalated
-
-The human operator always has the final decision
-
-This prevents both silent failures and over-restrictive behavior.
-
-7. Fail-Safe Defaults
-
-Ambiguous behavior → escalation
-
-No Telegram response → rejection
-
-Unexplainable code → rejection
-
-Safety favors inaction over accidental damage.
-
-Result:
-The system preserves AI freedom and expressiveness while guaranteeing that no potentially harmful behavior can occur without explicit, informed human approval.
-
-if you have any suggestions let me know before making the script
+## Development notes
+- Imports are kept simple—no try/except guards around them.
+- Extend the helper map in `bot/helpers.py` to expose more controlled capabilities to AI1.
+- The rolling memory in `bot/memory.py` can be tuned to adjust horizon or action history size.
