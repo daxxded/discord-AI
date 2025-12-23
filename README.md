@@ -1,145 +1,55 @@
-An Autonomous AI discord administrative bot.
+## Overview
 
-The AI will be based on Claude models, in particular "claude-3-5-haiku-20241022" and "claude-3-haiku-20240307"
+An autonomous Discord administrative bot that pairs two cooperating agents (AI1 + AI2) with explicit human-in-the-loop guardrails. The bot is designed to be expressive and free while still protecting the server through validation, auditing, and defensive execution.
 
-The AI will have access to everything in the joined server, a list of every channel, every role, every user (id, name, and display name) and every message ever sent (they will be retrieved when asked for them)
+## Capabilities
 
-The AI will have administrative abilities and will be able to execute any kind of code that revolves around the discord ambience, this includes asking for basic stuff es: "@bot create me a nice random role and give it to 3 random persons and Erika"
+- **Admin-level operations**: Create roles, send messages, and fulfill multi-step asks (e.g., *“summarize the last 20 messages and create a role”*).
+- **Conversational + action aware**: Can hold a conversation while picking out embedded requests.
+- **One-hour per-admin memory**: Contextual chat and request history is kept for each admin.
+- **Full action trail**: Every action is timestamped and written to `data/actions.log`.
+- **Three feedback loops**: Every execution is retried up to three times with error-aware adjustments for robustness.
+- **AI1 freedom, AI2 review**: AI1 generates executable Python; AI2 blocks dangerous patterns and can escalate for human approval.
 
-If the AI receives vague info or weird request it will ask for clarification in order not to execute random crap
+## Files
 
-The AI must also be able to talk normally, act normally and have nice conversations. if the user sends a text with inside a request for example: "yeah my grandma is a very nice cook.. ah btw can you create me a role called pizza? i like pizza, reminds me of what my grandma used to cook..." The AI will have the conversation and also execute the request
+- `config.example.json`: Template for required credentials (Discord, Anthropic, Telegram) and admin IDs.
+- `discord_ai/`:
+  - `config.py`: Loads the JSON config defensively.
+  - `audit_log.py`: Append-only timestamped action log.
+  - `memory.py`: One-hour, per-admin conversational memory.
+  - `feedback.py`: Three-attempt feedback loop for any action.
+  - `executor.py`: AI1 script generation + AI2 safety review + sandboxed execution.
+  - `bot.py`: High-level orchestrator with helpers for complex requests.
 
-The AI must be completely free, if asked to DM a user it will, if asked to send a random message in 3 random channels it will, if asked to *send a message 10 times every 5 seconds* it will
+## Human-in-the-loop flow
 
-The AI is free both in actions and time, if asked to do something that requires time, it will still do so.
+1. **AI1** generates a Python snippet tailored to the request.
+2. **AI2** runs static safety checks; unsafe scripts are rejected and logged.
+3. **Execution** happens inside a restricted sandbox with three feedback attempts.
+4. **Audit trail** records every step; human operators can inspect `data/actions.log` at any time.
 
-To do all of this the AI will write and execute its own code on my machine, the ai must be able to do basic imports necessary for every task, this includes calling safe APIs around the internet if requested or required to.
+## Running locally
 
+1. Copy `config.example.json` to `config.json` and fill in your tokens and admin IDs.
+2. Initialize the bot in your application code:
 
-how do we verify that AI will not play bad tricks on my PC and go nuts? we will have another AI (AI1 and AI2). AI2 will monitor every output of AI1, before execution, AI2 will be asked to validate the code of AI1, if it is stupidly dangerous es: (calling weird APIs, Mass destruction of the server or anything like that) AI2 will instantly reject and explain why in short words
+```python
+from discord_ai.bot import DiscordAIBot
 
-all of the information about token, server ID, people to can talk to the bot itself are stored in a JSON file that will be found in the same dir as the program; the file looks like this:
+bot = DiscordAIBot()
+result = bot.handle_request(
+    admin_id=123,
+    request="summarize the last 20 messages and create a role",
+    payload={"messages": [{"content": "hello"}, {"content": "world"}]},
+)
+print(result)
+```
 
-{
-    "discord_token": "xxxxxxxxxxxxx",
-    "anthropic_key": "xxxxxxxxxxxxx",
-    "telegram_token": "xxxxxxxxxxxxx",
-    "guild_id": 1443908368539451415,
-    "admins": [
-        783029509061476403,
-        1039618113852952577,
-        1361732484093575328,
-        1447673330269163752
-    ]
-}
+3. Inspect the latest actions with `tail -n 50 data/actions.log`.
 
+## Notes
 
-The AI1 must have a 1H memory for each individual ADMIN, this memory is for discussions, little chats and anything else
-The AI will also remember all of its actions, so in case the action wanted to revered it's pretty easy
-
-AI1, WILL not be able to read anything on my pc, nor write
-
-1. Human-in-the-Loop Final Authority
-
-A new manual confirmation layer has been introduced.
-
-If AI2 determines that a script generated by AI1 may be unsafe, ambiguous, irreversible, or potentially abusive, execution is paused immediately and escalated to the project owner via a Telegram bot.
-
-No flagged script can run without explicit human approval.
-
-2. AI2 → Telegram Confirmation Workflow
-
-When escalation is triggered, the Telegram bot sends a structured message containing:
-
-Plain-English Summary
-A clear explanation of what the script does, written for humans (no code interpretation required).
-
-Risk Analysis
-A concise list of objective risks, such as:
-
-mass or repeated actions
-
-timed or scheduled execution
-
-possible rate-limit issues
-
-multi-user or multi-channel impact
-
-external network usage
-
-Exact Script Snapshot
-The full, unmodified Python code generated by AI1, displayed read-only.
-
-If AI2 cannot confidently explain the script’s behavior, the request is automatically escalated.
-
-3. Telegram Decision Controls
-
-The Telegram bot provides fast, explicit controls:
-
-✅ Approve (Run Once)
-
-⛔ Reject
-
-🔁 Approve & Trust This Pattern (optional future whitelist)
-
-📄 View Full Code
-
-If no response is received within a predefined timeout, the request is automatically rejected.
-
-4. Hard Execution Freeze Until Approval
-
-When a script is flagged:
-
-No partial execution is allowed
-
-No background tasks or delayed actions may start
-
-No state changes occur
-
-Execution resumes only after an explicit approval signal from Telegram.
-
-5. Python Execution Model (Updated)
-
-AI1 is allowed to generate Python directly for expressiveness and complex reasoning.
-
-However:
-
-AI1 still has no filesystem access
-
-AI1 cannot read or write local files
-
-Secrets (tokens, keys, IDs) are never exposed to the model
-
-Execution occurs only inside the controlled executor environment
-
-AI2 acts as a reviewer, but final authority belongs to the human operator.
-
-6. AI2 Is Advisory, Not Absolute
-
-AI2 does not silently block behavior.
-
-Instead:
-
-Clear or safe scripts pass automatically
-
-Risky or unclear scripts are escalated
-
-The human operator always has the final decision
-
-This prevents both silent failures and over-restrictive behavior.
-
-7. Fail-Safe Defaults
-
-Ambiguous behavior → escalation
-
-No Telegram response → rejection
-
-Unexplainable code → rejection
-
-Safety favors inaction over accidental damage.
-
-Result:
-The system preserves AI freedom and expressiveness while guaranteeing that no potentially harmful behavior can occur without explicit, informed human approval.
-
-if you have any suggestions let me know before making the script
+- The sandbox in `executor.py` blocks common destructive patterns and keeps builtins empty to reduce blast radius while preserving AI freedom.
+- Swap the static AI2 checks with your preferred model reviewer or Telegram approval layer for production use.
+- Extend `BotContext` with your Discord client hooks (send message, create role, fetch history) to connect the orchestrator to the live server.
