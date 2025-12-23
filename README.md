@@ -13,7 +13,7 @@ An autonomous Discord administrative bot that pairs two cooperating agents (AI1 
 
 ## Files
 
-- `config.example.json`: Template for required credentials (Discord, Anthropic, Telegram) and admin IDs.
+- `config.example.json`: Template for required credentials (Discord, Anthropic, Telegram), admin IDs, and non-admin chat-only IDs.
 - `discord_ai/`:
   - `config.py`: Loads the JSON config defensively.
   - `audit_log.py`: Append-only timestamped action log.
@@ -21,6 +21,7 @@ An autonomous Discord administrative bot that pairs two cooperating agents (AI1 
   - `feedback.py`: Three-attempt feedback loop for any action.
   - `executor.py`: AI1 script generation + AI2 safety review + sandboxed execution.
   - `bot.py`: High-level orchestrator with helpers for complex requests.
+- `main.py`: Lightweight entrypoint to bootstrap a `DiscordAIBot` using `config.json`.
 
 ## Human-in-the-loop flow
 
@@ -36,12 +37,22 @@ An autonomous Discord administrative bot that pairs two cooperating agents (AI1 
 
 ```python
 from discord_ai.bot import DiscordAIBot
+from discord_ai.config import load_config
 
-bot = DiscordAIBot()
+bot = DiscordAIBot(config=load_config())
 result = bot.handle_request(
     admin_id=123,
     request="summarize the last 20 messages and create a role",
-    payload={"messages": [{"content": "hello"}, {"content": "world"}]},
+    payload={
+        "messages": [{"content": "hello"}, {"content": "world"}],
+        "channels": [111, 222, 333, 444],
+        "random_text": "Say hi in random channels",
+        "dm_user_id": 555,
+        "dm_text": "Here's your summary",
+        "scheduled_messages": [
+            {"channel_id": 111, "content": "Welcome!", "delay_seconds": 3, "repeat": True, "interval_seconds": 3},
+        ],
+    },
 )
 print(result)
 ```
@@ -53,3 +64,4 @@ print(result)
 - The sandbox in `executor.py` blocks common destructive patterns and keeps builtins empty to reduce blast radius while preserving AI freedom.
 - Swap the static AI2 checks with your preferred model reviewer or Telegram approval layer for production use.
 - Extend `BotContext` with your Discord client hooks (send message, create role, fetch history) to connect the orchestrator to the live server.
+- Channel `1444077226365816864` is hard-protected from deletion within the orchestration layer.

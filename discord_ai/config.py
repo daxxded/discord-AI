@@ -17,6 +17,7 @@ class BotConfig:
     telegram_token: str
     guild_id: int
     admins: List[int]
+    non_admins: List[int]
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "BotConfig":
@@ -26,6 +27,7 @@ class BotConfig:
             telegram_token=data.get("telegram_token", ""),
             guild_id=int(data.get("guild_id", 0)),
             admins=[int(admin) for admin in data.get("admins", [])],
+            non_admins=[int(user) for user in data.get("non_admins", [])],
         )
 
 

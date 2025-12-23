@@ -3,5 +3,6 @@
     "anthropic_key": "YOUR_ANTHROPIC_KEY",
     "telegram_token": "YOUR_TELEGRAM_TOKEN",
     "guild_id": 1234567890,
-    "admins": [111111, 222222]
+    "admins": [111111, 222222],
+    "non_admins": [333333, 444444]
 }

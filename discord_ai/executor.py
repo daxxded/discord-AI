@@ -19,6 +19,8 @@ SAFE_GUARDS = (
     "subprocess",
     "open(\"/",
     "socket",
+    "delete_channel",
+    "1444077226365816864",  # block high-priority channel id from appearing in generated code
 )
 
 
@@ -44,9 +46,26 @@ class AIExecutor:
             # Auto-generated script for: {request}
             def run(context):
                 # The context contains safe helpers like send_message, create_role, fetch_messages
-                summary = context.fetch_and_summarize(limit=20)
+                summary = context.fetch_and_summarize(limit=context.payload.get('summary_limit', 20))
                 role = context.create_role(name=context.payload.get('role_name', 'auto-role'))
                 context.send_message(summary)
+
+                # Optional freedom actions
+                context.send_random_text_to_channels(
+                    count=3,
+                    text=context.payload.get('random_text', 'Automated hello from AI'),
+                )
+                if context.payload.get('dm_user_id'):
+                    context.dm_user(user_id=context.payload['dm_user_id'], text=context.payload.get('dm_text', summary))
+                if context.payload.get('scheduled_messages'):
+                    for entry in context.payload['scheduled_messages']:
+                        context.schedule_message(
+                            channel_id=entry.get('channel_id'),
+                            content=entry.get('content', 'Scheduled hello'),
+                            delay_seconds=entry.get('delay_seconds', 3),
+                            repeat=entry.get('repeat', False),
+                            interval_seconds=entry.get('interval_seconds', 3),
+                        )
                 return {{"summary": summary, "role": role}}
             """
         ).strip()
