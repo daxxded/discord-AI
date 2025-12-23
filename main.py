@@ -12,7 +12,6 @@ from bot.anthropic_client import AnthropicClient
 from bot.config import BotConfig, find_config_path
 from bot.event_logger import JSONEventLogger
 from bot.executor import ScriptExecutor
-from bot.helpers import DiscordHelpers
 from bot.memory import RollingMemory
 from bot.telegram_bridge import TelegramBridge
 
@@ -33,12 +32,11 @@ class AutonomousDiscordBot(discord.Client):
         self.agent = AIConversationAgent(self.ai_client, self.memory)
         self.ai2 = AI2Reviewer()
         self.telegram = telegram
-        self.helpers = DiscordHelpers(self, config.guild_id)
         self.executor: ScriptExecutor | None = None
         self.events = events
 
     async def on_ready(self) -> None:
-        self.executor = ScriptExecutor(self.helpers.to_mapping())
+        self.executor = ScriptExecutor(self._executor_namespace())
         await self.events.log("discord_ready", user_id=getattr(self.user, "id", None), username=str(self.user))
         log.info("Logged in as %s", self.user)
 
@@ -51,7 +49,7 @@ class AutonomousDiscordBot(discord.Client):
                 channel_id=getattr(message.channel, "id", None),
             )
             return
-        if message.guild and message.guild.id != self.config.guild_id:
+        if message.guild and self.config.guild_id and message.guild.id != self.config.guild_id:
             await self.events.log(
                 "message_ignored",
                 reason="different_guild",
@@ -59,20 +57,12 @@ class AutonomousDiscordBot(discord.Client):
                 guild_id=message.guild.id,
             )
             return
-        if message.author.id not in self.config.admins:
+        if self.config.admins and message.author.id not in self.config.admins:
             await self.events.log(
                 "message_ignored",
                 reason="not_admin",
                 author_id=message.author.id,
                 channel_id=getattr(message.channel, "id", None),
-            )
-            return
-        if message.guild and self.user not in message.mentions:
-            await self.events.log(
-                "message_ignored",
-                reason="bot_not_mentioned",
-                author_id=message.author.id,
-                channel_id=message.channel.id,
             )
             return
 
@@ -146,6 +136,16 @@ class AutonomousDiscordBot(discord.Client):
             log.exception("Execution failed")
             await channel.send(f"Failed to execute script ({request_id}): {exc}")
             await self.events.log("action_failed", request_id=request_id, author_id=author.id, error=str(exc))
+
+    def _executor_namespace(self) -> dict:
+        return {
+            "discord_client": self,
+            "client": self,
+            "bot": self,
+            "guild": self.get_guild(self.config.guild_id) if self.config.guild_id else None,
+            "discord": discord,
+            "asyncio": asyncio,
+        }
 
 
 async def main() -> None:
