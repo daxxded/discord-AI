@@ -65,6 +65,14 @@ class AutonomousDiscordBot(discord.Client):
                 channel_id=getattr(message.channel, "id", None),
             )
             return
+        if message.guild and self.user not in message.mentions:
+            await self.events.log(
+                "message_ignored",
+                reason="bot_not_mentioned",
+                author_id=message.author.id,
+                channel_id=message.channel.id,
+            )
+            return
 
         content = message.content.strip()
         self.memory.add_message(message.author.id, content)
