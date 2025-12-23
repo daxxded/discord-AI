@@ -24,6 +24,7 @@ class AIConversationAgent:
             "- discord_client (the discord.Client instance)\n"
             "- guild (the active guild object)\n"
             "Use discord.py primitives directly—there is no helper map. You may also import discord and asyncio when needed. "
+            "Always speak in first person as AI1 (e.g., \"I'm AI1, ...\") and avoid simply repeating the user's words. "
             "Chat normally when the user is just talking, but keep replies concise and human. When actions are needed, include "
             "them alongside a short reply."
             f"\nAdmin/User ID: {author_id}"
@@ -51,11 +52,17 @@ class AIConversationAgent:
         return {"reply": reply, "actions": [str(action) for action in actions]}
 
     def _friendly_reply(self, message: str, raw: str) -> str:
-        if raw.strip():
-            return raw.strip()
+        text = raw.strip()
+        if text:
+            return text
+        lower = message.lower()
+        if "name" in lower:
+            return "I'm AI1, your Discord admin assistant."
+        if "how are you" in lower or "how's it" in lower:
+            return "I'm AI1 and doing great—how can I help?"
         if message.strip():
-            return f"Got it — {message.strip()}"
-        return "I'm here and ready to help."
+            return f"I'm AI1 and I hear you: {message.strip()}"
+        return "I'm AI1 and ready to help."
 
     def _parse_plan(self, raw: str) -> Dict | None:
         if not raw:
