@@ -34,10 +34,11 @@ class AutonomousDiscordBot(discord.Client):
         self.ai2 = AI2Reviewer()
         self.telegram = telegram
         self.helpers = DiscordHelpers(self, config.guild_id)
-        self.executor = ScriptExecutor(self.helpers.to_mapping())
+        self.executor: ScriptExecutor | None = None
         self.events = events
 
     async def on_ready(self) -> None:
+        self.executor = ScriptExecutor(self.helpers.to_mapping())
         await self.events.log("discord_ready", user_id=getattr(self.user, "id", None), username=str(self.user))
         log.info("Logged in as %s", self.user)
 
@@ -135,6 +136,8 @@ class AutonomousDiscordBot(discord.Client):
         await channel.send(f"Executing action ({request_id})…")
         await self.events.log("action_started", request_id=request_id, author_id=author.id)
         try:
+            if not self.executor:
+                raise RuntimeError("Executor not ready")
             await self.executor.execute(script)
             self.memory.add_action(f"{author.display_name}: {review.summary}")
             await channel.send(f"Completed action ({request_id}).")
