@@ -30,6 +30,8 @@ class AI2Reviewer:
             risks.append("Timed or scheduled execution present")
         if any(keyword in normalized for keyword in ("for channel", "for user", "mass")):
             risks.append("Potential multi-user or multi-channel impact")
+        if any(keyword in normalized for keyword in ("ban_", "kick_", "delete_channel", "webhook")):
+            risks.append("High-impact administrative action")
         if script.count("\n") > self.max_lines_before_escalation:
             risks.append("Large script length exceeds auto-approval threshold")
 
