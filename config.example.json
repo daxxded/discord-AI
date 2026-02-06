@@ -1,7 +1,0 @@
-{
-  "discord_token": "your-discord-token",
-  "anthropic_key": "your-anthropic-key",
-  "telegram_token": "your-telegram-token",
-  "guild_id": 0,
-  "admins": []
-}
