@@ -1,0 +1,21 @@
+{
+  "provider": "claude",
+  "apiKey": "INSERISCI_API_KEY_CLAUDE",
+  "defaultModel": "claude-opus-4-5",
+  "models": [
+    {
+      "id": "claude-opus-4-5",
+      "label": "Opus 4.5 (massima intelligenza)"
+    },
+    {
+      "id": "claude-sonnet-4-5",
+      "label": "Sonnet 4.5 (coding/contesto lungo)"
+    },
+    {
+      "id": "claude-haiku-3-5",
+      "label": "Haiku 3.5 (veloce/economico)"
+    }
+  ],
+  "systemPrompt": "Sei un assistente vocale sul mio computer personale. Rispondi in italiano, in modo chiaro. Se l'utente chiede azioni sul computer, restituisci un JSON con il tipo di azione da eseguire.",
+  "location": "Milano, IT"
+}

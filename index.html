@@ -1,0 +1,51 @@
+<!-- file: index.html -->
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hyperplexity Assistant</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="theme-dark">
+    <div class="assistant-wrapper">
+      <div id="assistantBar" class="assistant-bar">
+        <div class="left-visualizer" aria-label="Visualizzatore voce assistente">
+          <span class="bar"></span>
+          <span class="bar"></span>
+          <span class="bar"></span>
+        </div>
+
+        <button id="sendButton" class="send-button" type="button">Invio</button>
+
+        <button id="menuButton" class="right-menu-trigger" type="button" aria-label="Apri impostazioni">
+          •••
+        </button>
+      </div>
+
+      <div id="responseArea" class="response-area" aria-live="polite"></div>
+
+      <div id="settingsMenu" class="settings-menu hidden">
+        <h3>Impostazioni</h3>
+        <div class="settings-section">
+          <p class="section-title">Modello Claude</p>
+          <div id="modelOptions" class="options-group"></div>
+        </div>
+        <div class="settings-section">
+          <p class="section-title">Tema</p>
+          <div class="theme-buttons">
+            <button type="button" data-theme="light">Light</button>
+            <button type="button" data-theme="dark">Dark</button>
+            <button type="button" data-theme="night">Night</button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <p class="section-title">Simula voce</p>
+          <button id="simulateVoice" type="button" class="secondary-button">Parla</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>
